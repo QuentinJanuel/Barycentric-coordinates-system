@@ -29,6 +29,9 @@ points.C = newPoint(-50, 0, 50);
 // Compute barycenter of A, B and C
 points.G = barycenter(points.A, points.B, points.C);
 
+// The green point
+points.D = newPoint(-75, 0, 50, newColor(0, 255, 0));
+
 // Outer points
 let size = 200;
 points.x1 = newPoint(-size, 0, -size, newColor(100, 100, 100));
@@ -37,7 +40,7 @@ points.x3 = newPoint(+size, 0, +size, newColor(100, 100, 100));
 points.x4 = newPoint(+size, 0, -size, newColor(100, 100, 100));
 
 // Camera
-let cam = {x: 0, y: 0, z: 0};
+let cam = newPoint(0, 0, 0);
 let oldMouse = {x: 0, y: 0};
 let dist;
 
@@ -45,14 +48,17 @@ let dist;
 let yScalar = 150;
 
 // angles for moving the point A (temp)
-let angleA = 0;
-let angleB = 0;
-let angleC = 0;
+let angleA = 0, angleB = 0;
 
 function setup(){
 	createCanvas(window.innerWidth, window.innerHeight, WEBGL);
 	cam.y = -300;
 	cam.z = (height/2)/Math.tan(Math.PI/6);
+	textFont(loadFont(
+		"https://fonts.gstatic.com/s/newscycle/v14/CSR54z1Qlv-GDxkbKVQ_dFsvWNRevA.ttf"
+	));
+	textSize(15);
+	textAlign(CENTER, CENTER);
 }
 
 function moveInSpace(){
@@ -79,7 +85,7 @@ function initSpace(){
 	noStroke();
 }
 
-function drawPoint(point){
+function drawPoint(point, name){
 	if(point.color)
 		ambientMaterial(point.color.r, point.color.g, point.color.b);
 	else
@@ -87,6 +93,15 @@ function drawPoint(point){
 	translate(point.x, point.y, point.z);
 	sphere(5);
 	translate(-point.x, -point.y, -point.z);
+	let scal = 1/2;
+	let textPoint = newPoint(
+		cam.x+(point.x-cam.x)*scal,
+		cam.y+(point.y-cam.y)*scal,
+		cam.z+(point.z-cam.z)*scal
+	);
+	translate(textPoint.x, textPoint.y, textPoint.z);
+	text(name, 0, 0);
+	translate(-textPoint.x, -textPoint.y, -textPoint.z);
 	ambientMaterial(255);
 }
 
@@ -141,6 +156,14 @@ function drawABCPlane(){
 	endShape(CLOSE);
 }
 
+function yToWeight(y){
+	return map(y, 0, -yScalar, 1, 0);
+}
+
+function weightToY(weight){
+	return map(weight, 0, 1, -yScalar, 0);
+}
+
 function draw(){
 	initSpace();
 	// Recompute the barycenter
@@ -148,13 +171,12 @@ function draw(){
 	// Move the point A, B, C (temp)
 	points.A.y = (sin(angleA)-1)*yScalar/2;
 	points.B.y = (sin(angleB)-1)*yScalar/2;
-	points.C.y = (sin(angleC)-1)*yScalar/2;
+	points.C.y = weightToY(1-yToWeight(points.A.y)-yToWeight(points.B.y));
 	angleA += .005;
 	angleB += .011;
-	angleC += .016;
 	// Points
-	for(let key of ['A', 'B', 'C', 'G'])
-		drawPoint(points[key]);
+	for(let key of ['A', 'B', 'C', 'G', 'D'])
+		drawPoint(points[key], key);
 	// Planes
 	drawBottomPlane();
 	drawABCPlane();
