@@ -1,28 +1,53 @@
-let points = {};
 function newColor(red, green, blue){
 	return {
 		r: red, g: green, b: blue
 	};
 }
-function newPoint(name, x, y, z, color){
+
+function newPoint(x, y, z, color){
 	let point = {x: x, y: y, z: z};
 	if(color)
 		point.color = color;
-	points[name] = point;
+	return point;
 }
-newPoint('A', 0, -100, 0);
-newPoint('B', 100, 0, 100);
-newPoint('C', -50, 0, 50);
+
+function barycenter(point1, point2, point3){
+	return newPoint(
+		(point1.x+point2.x+point3.x)/3,
+		(point1.y+point2.y+point3.y)/3,
+		(point1.z+point2.z+point3.z)/3,
+		newColor(0, 0, 255)
+	);
+}
+
+let points = {};
+// Triangle points
+points.A = newPoint(0, -50, 0);
+points.B = newPoint(100, 0, 100);
+points.C = newPoint(-50, 0, 50);
+
 // Compute barycenter of A, B and C
-newPoint('G', (points.A.x+points.B.x+points.C.x)/3, (points.A.y+points.B.y+points.C.y)/3, (points.A.z+points.B.z+points.C.z)/3, newColor(0, 0, 255));
-let size = 300;
-newPoint('x1', -size, 0, -size, newColor(100, 100, 100));
-newPoint('x2', -size, 0, +size, newColor(100, 100, 100));
-newPoint('x3', +size, 0, +size, newColor(100, 100, 100));
-newPoint('x4', +size, 0, -size, newColor(100, 100, 100));
+points.G = barycenter(points.A, points.B, points.C);
+
+// Outer points
+let size = 200;
+points.x1 = newPoint(-size, 0, -size, newColor(100, 100, 100));
+points.x2 = newPoint(-size, 0, +size, newColor(100, 100, 100));
+points.x3 = newPoint(+size, 0, +size, newColor(100, 100, 100));
+points.x4 = newPoint(+size, 0, -size, newColor(100, 100, 100));
+
+// Camera
 let cam = {x: 0, y: 0, z: 0};
 let oldMouse = {x: 0, y: 0};
 let dist;
+
+// Y Scalar
+let yScalar = 150;
+
+// angles for moving the point A (temp)
+let angleA = 0;
+let angleB = 0;
+let angleC = 0;
 
 function setup(){
 	createCanvas(window.innerWidth, window.innerHeight, WEBGL);
@@ -65,23 +90,75 @@ function drawPoint(point){
 	ambientMaterial(255);
 }
 
-function draw(){
-	initSpace();
-	// Points
-	for(let key of ['A', 'B', 'C', 'G'])
-		drawPoint(points[key]);
-	// Plane
-	//First plane
+function drawBottomPlane(){
+	ambientMaterial(255, 255, 255, 255);
 	beginShape();
 	for(let key of ['x1', 'x2', 'x3', 'x4'])
 		vertex(points[key].x, points[key].y, points[key].z);
 	endShape(CLOSE);
-	// Inclined plane
+}
+
+function drawTopPlane(){
+	ambientMaterial(255, 255, 255, 100);
 	beginShape();
-	ambientMaterial(100);
-	for(let key of ['A', 'B', 'C'])
-		vertex(points[key].x, points[key].y, points[key].z);
+	for(let key of ['x1', 'x2', 'x3', 'x4'])
+		vertex(points[key].x, points[key].y-yScalar, points[key].z);
 	endShape(CLOSE);
+}
+
+function getInclinedPlaneYCoord(x, z){
+	// u is the vector AB
+	let u = newPoint(
+		points.B.x-points.A.x,
+		points.B.y-points.A.y,
+		points.B.z-points.A.z
+	);
+	// v is the vector AC
+	let v = newPoint(
+		points.C.x-points.A.x,
+		points.C.y-points.A.y,
+		points.C.z-points.A.z
+	);
+	// w is the vector Axi and its y coordinate is unkown
+	let w = newPoint(
+		x-points.A.x,
+		0,
+		z-points.A.z
+	);
+	let num = w.x*(u.y*v.z-v.y*u.z)+w.z*(u.x*v.y-v.x*u.y);
+	let den = u.x*v.z-v.x*u.z;
+	w.y = num/den;
+	return w.y+points.A.y;
+}
+
+function drawABCPlane(){
+	ambientMaterial(0, 100, 255);
+	beginShape();
+	for(let key of ['x1', 'x2', 'x3', 'x4']){
+		let y = getInclinedPlaneYCoord(points[key].x, points[key].z);
+		vertex(points[key].x, y, points[key].z);
+	}
+	endShape(CLOSE);
+}
+
+function draw(){
+	initSpace();
+	// Recompute the barycenter
+	points.G = barycenter(points.A, points.B, points.C);
+	// Move the point A, B, C (temp)
+	points.A.y = (sin(angleA)-1)*yScalar/2;
+	points.B.y = (sin(angleB)-1)*yScalar/2;
+	points.C.y = (sin(angleC)-1)*yScalar/2;
+	angleA += .005;
+	angleB += .011;
+	angleC += .016;
+	// Points
+	for(let key of ['A', 'B', 'C', 'G'])
+		drawPoint(points[key]);
+	// Planes
+	drawBottomPlane();
+	drawABCPlane();
+	drawTopPlane();
 	// Move
 	moveInSpace();
 }
