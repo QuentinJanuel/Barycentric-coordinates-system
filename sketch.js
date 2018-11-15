@@ -25,9 +25,9 @@ function barycenter(point1, point2, point3){
 
 let points = {};
 // Triangle points
-points.A = newPoint(0, -50, 0);
+points.A = newPoint(0, 0, -200);
 points.B = newPoint(100, 0, 100);
-points.C = newPoint(-50, 0, 50);
+points.C = newPoint(-200, 0, 150);
 
 // Compute barycenter of A, B and C
 points.G = barycenter(points.A, points.B, points.C);
@@ -59,36 +59,57 @@ let draw2DPoints = function(){
 		ctx2D.arc(x, y, 5, 0, 2*Math.PI);
 		ctx2D.fill();
 		ctx2D.closePath();
-		ctx2D.fillText(key, x+10, y+10);
+		let name = key;
+		if(['A', 'B', 'C'].includes(key))
+			name += " ("+Math.round(yToWeight(points[key].y)*100)/100+")";
+		ctx2D.fillText(name, x+10, y+10);
 	}
 }
-draw2DPoints();
-canvas2D.addEventListener("click", function(e){
+let movePointD = function(e){
 	points.D.x = (e.clientX-canvas2D.width/2)/scalar2D;
 	points.D.z = (e.clientY-canvas2D.height/2)/scalar2D;
+	adaptPlaneToPointD();
 	draw2DPoints();
+}
+let marbleVisible = false;
+let marbleSpeed = 0;
+let mousePressed2D = false;
+canvas2D.addEventListener("mousedown", function(e){
+	mousePressed2D = true;
+	movePointD(e);
+	if(marbleSpeed == 0)
+		marbleVisible = false;
+});
+canvas2D.addEventListener("mouseup", function(){
+	mousePressed2D = false;
+});
+canvas2D.addEventListener("mousemove", function(e){
+	if(mousePressed2D){
+		movePointD(e);
+	}
 });
 
 // Outer points
-points.x1 = newPoint(-size/2, 0, -size/2, newColor(100, 100, 100));
-points.x2 = newPoint(-size/2, 0, +size/2, newColor(100, 100, 100));
-points.x3 = newPoint(+size/2, 0, +size/2, newColor(100, 100, 100));
-points.x4 = newPoint(+size/2, 0, -size/2, newColor(100, 100, 100));
+points.x1 = newPoint(-size/2, 0, -size/2);
+points.x2 = newPoint(-size/2, 0, +size/2);
+points.x3 = newPoint(+size/2, 0, +size/2);
+points.x4 = newPoint(+size/2, 0, -size/2);
+
+// Variables
+let yScalar = 300;
+let mousePressedCanvas = false;
+let graphics;
+
+// Coord points
+points["0"] = newPoint(-size/2, -yScalar, size/2, newColor(100, 100, 100));
+points["1"] = newPoint(-size/2, 0, size/2, newColor(100, 100, 100));
 
 // Camera
 let cam = newPoint(0, 0, 0);
 let oldMouse = {x: 0, y: 0};
-let camDist = 600;
+let camDist = 1000;
 let camTheta1 = Math.PI*2/3;
 let camTheta2 = Math.PI/2;
-
-// Variables
-let yScalar = 150;
-let mousePressedCanvas = false;
-let graphics;
-
-// angles for moving the point A (temp)
-let angleA = 0, angleB = 0;
 
 function setup(){
 	let canvas = createCanvas(window.innerWidth-canvas2D.width, window.innerHeight, WEBGL);
@@ -100,6 +121,8 @@ function setup(){
 	graphics = createGraphics(300, 300);
 	graphics.textAlign(CENTER, CENTER);
 	graphics.textSize(200);
+	adaptPlaneToPointD();
+	draw2DPoints();
 }
 
 function moveInSpace(){
@@ -108,7 +131,8 @@ function moveInSpace(){
 		camTheta1 += (mouseY-oldMouse.y)*Math.PI/180/3;
 		let epsilon = .01;
 		camTheta1 = Math.max(epsilon, Math.min(camTheta1, Math.PI-epsilon));
-	}
+	}else
+		camTheta2 += .001;
 	oldMouse = {x: mouseX, y: mouseY};
 	cam.x = camDist*Math.sin(camTheta1)*Math.cos(camTheta2);
 	cam.z = camDist*Math.sin(camTheta1)*Math.sin(camTheta2);
@@ -141,7 +165,7 @@ function drawPoint(point, name){
 	translate(-point.x, -point.y, -point.z);
 	//
 	// Draw text point
-	let scal = 1/2;
+	let scal = 1/3;
 	let up = 10;
 	let textPoint = newPoint(
 		cam.x+(point.x-cam.x)*scal,
@@ -155,7 +179,7 @@ function drawPoint(point, name){
 	graphics.background(5, 4, 68);
 	graphics.text(name, 150, 150);
 	texture(graphics);
-	plane(20);
+	plane(10);
 	rotateX(-camTheta1+Math.PI/2);
 	rotateY(camTheta2-Math.PI/2);
 	translate(-textPoint.x, -textPoint.y+up, -textPoint.z);
@@ -214,27 +238,111 @@ function drawABCPlane(){
 	endShape(CLOSE);
 }
 
+function weightToY(weight){
+	return map(weight, 0, 1, -yScalar, 0);
+}
+
 function yToWeight(y){
 	return map(y, 0, -yScalar, 1, 0);
 }
 
-function weightToY(weight){
-	return map(weight, 0, 1, -yScalar, 0);
+function getABCCoord(point){
+	let orig = {
+		x: points.A.x,
+		y: points.A.z
+	};
+	let ax = {
+		x: point.x-points.A.x,
+		y: point.z-points.A.z
+	};
+	let ab = {
+		x: points.B.x-points.A.x,
+		y: points.B.z-points.A.z
+	};
+	let ac = {
+		x: points.C.x-points.A.x,
+		y: points.C.z-points.A.z
+	};
+	let det = ab.x*ac.y-ac.x*ab.y;
+	let alpha = ac.y*ax.x-ac.x*ax.y;
+	let beta = ab.x*ax.y-ab.y*ax.x;
+	alpha /= det;
+	beta /= det;
+	return {ab: alpha, ac: beta};
 }
+
+function getBaryCoord(point){
+	let weightA, weightB, weightC;
+	let abcCoord = getABCCoord(point);
+	weightB = abcCoord.ab;
+	weightC = abcCoord.ac;
+	weightA = 1-weightB-weightC;
+	return {
+		a: weightA,
+		b: weightB,
+		c: weightC
+	};
+}
+
+function adaptPlaneToPointD(){
+	let bary = getBaryCoord(points.D);
+	points.A.y = weightToY(bary.a);
+	points.B.y = weightToY(bary.b);
+	points.C.y = weightToY(bary.c);
+}
+
+function getDescent(){
+	let num = points.D.y-points.G.y;
+	let den = dist(points.D.x, points.D.z, points.G.x, points.G.y);
+	return num/den;
+}
+
+let canSpace = true;
+let marble = newPoint(0, 0, 0);
+let marbleRadius = 20;
+let marbleDist = 0;
+let firstDate;
+function updateMarble(){
+	marbleDist += marbleSpeed;
+	if(marbleDist > 1){
+		marbleDist = 1;
+		marbleSpeed = 0;
+		canSpace = true;
+		console.log(Date.now()-firstDate);
+	}
+	marble.x = points.G.x+marbleDist*(points.D.x-points.G.x);
+	marble.z = points.G.z+marbleDist*(points.D.z-points.G.z);
+	marble.y = getInclinedPlaneYCoord(marble.x, marble.z);
+}
+function drawMarble(){
+	ambientMaterial(100, 200, 100);
+	// Draw the marble
+	translate(marble.x, marble.y-marbleRadius, marble.z);
+	sphere(marbleRadius);
+	translate(-marble.x, -marble.y+marbleRadius, -marble.z);
+}
+document.body.addEventListener("keydown", function(e){
+	if(e.code == "Space" && canSpace){
+		canSpace = false;
+		marbleDist = 0;
+		marbleSpeed = .01;
+		marbleVisible = true;
+		firstDate = Date.now();
+	}
+});
 
 function draw(){
 	initSpace();
 	// Recompute the barycenter
 	points.G = barycenter(points.A, points.B, points.C);
-	// Move the point A, B, C (temp)
-	points.A.y = (sin(angleA)-1)*yScalar/2;
-	points.B.y = (sin(angleB)-1)*yScalar/2;
-	points.C.y = weightToY(1-yToWeight(points.A.y)-yToWeight(points.B.y));
-	angleA += .005;
-	angleB += .011;
+	points.D.y = getInclinedPlaneYCoord(points.D.x, points.D.z);
 	// Points
-	for(let key of ['A', 'B', 'C', 'G', 'D'])
+	for(let key of ['A', 'B', 'C', 'G', 'D', '0', '1'])
 		drawPoint(points[key], key);
+	// Marble
+	updateMarble();
+	if(marbleVisible)
+		drawMarble();
 	// Planes
 	drawBottomPlane();
 	drawABCPlane();
