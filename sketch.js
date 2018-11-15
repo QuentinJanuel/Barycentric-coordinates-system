@@ -71,14 +71,19 @@ let movePointD = function(e){
 	adaptPlaneToPointD();
 	draw2DPoints();
 }
+// Marble
 let marbleVisible = false;
 let marbleSpeed = 0;
+let canSpace = true;
+let marble = newPoint(0, 0, 0);
+let marbleRadius = 20;
+let marbleDist = 0;
+
 let mousePressed2D = false;
 canvas2D.addEventListener("mousedown", function(e){
 	mousePressed2D = true;
 	movePointD(e);
-	if(marbleSpeed == 0)
-		marbleVisible = false;
+	marbleVisible = false;
 });
 canvas2D.addEventListener("mouseup", function(){
 	mousePressed2D = false;
@@ -291,24 +296,12 @@ function adaptPlaneToPointD(){
 	points.C.y = weightToY(bary.c);
 }
 
-function getDescent(){
-	let num = points.D.y-points.G.y;
-	let den = dist(points.D.x, points.D.z, points.G.x, points.G.y);
-	return num/den;
-}
-
-let canSpace = true;
-let marble = newPoint(0, 0, 0);
-let marbleRadius = 20;
-let marbleDist = 0;
-let firstDate;
 function updateMarble(){
 	marbleDist += marbleSpeed;
 	if(marbleDist > 1){
 		marbleDist = 1;
 		marbleSpeed = 0;
 		canSpace = true;
-		console.log(Date.now()-firstDate);
 	}
 	marble.x = points.G.x+marbleDist*(points.D.x-points.G.x);
 	marble.z = points.G.z+marbleDist*(points.D.z-points.G.z);
@@ -327,7 +320,6 @@ document.body.addEventListener("keydown", function(e){
 		marbleDist = 0;
 		marbleSpeed = .01;
 		marbleVisible = true;
-		firstDate = Date.now();
 	}
 });
 
@@ -341,8 +333,11 @@ function draw(){
 		drawPoint(points[key], key);
 	// Marble
 	updateMarble();
-	if(marbleVisible)
+	if(marbleVisible){
 		drawMarble();
+		ctx2D.fillStyle = "#000";
+		ctx2D.fillRect(0, canvas2D.height-10, canvas2D.width*marbleDist, canvas2D.height);
+	}
 	// Planes
 	drawBottomPlane();
 	drawABCPlane();
