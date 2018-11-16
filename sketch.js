@@ -182,9 +182,8 @@ function drawPoint(point, name){
 		cam.y+(point.y-up-cam.y)*scal,
 		cam.z+(point.z-cam.z)*scal
 	);
-	if(['A', 'B', 'C', 'G', 'D'].includes(name)){
+	if(['A', 'B', 'C', 'G', 'D'].includes(name))
 		textPoint.y = cam.y+(-up-cam.y)*scal;
-	}
 	translate(textPoint.x, textPoint.y-up, textPoint.z);
 	rotateY(-camTheta2+Math.PI/2);
 	rotateX(camTheta1-Math.PI/2);
