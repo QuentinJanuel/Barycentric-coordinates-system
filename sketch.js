@@ -168,6 +168,11 @@ function drawPoint(point, name){
 	translate(point.x, point.y, point.z);
 	sphere(5);
 	translate(-point.x, -point.y, -point.z);
+	if(['A', 'B', 'C', 'G', 'D'].includes(name)){
+		translate(point.x, 0, point.z);
+		sphere(5);
+		translate(-point.x, 0, -point.z);
+	}
 	//
 	// Draw text point
 	let scal = 1/3;
@@ -177,6 +182,9 @@ function drawPoint(point, name){
 		cam.y+(point.y-up-cam.y)*scal,
 		cam.z+(point.z-cam.z)*scal
 	);
+	if(['A', 'B', 'C', 'G', 'D'].includes(name)){
+		textPoint.y = cam.y+(-up-cam.y)*scal;
+	}
 	translate(textPoint.x, textPoint.y-up, textPoint.z);
 	rotateY(-camTheta2+Math.PI/2);
 	rotateX(camTheta1-Math.PI/2);
@@ -335,6 +343,7 @@ function draw(){
 	updateMarble();
 	if(marbleVisible){
 		drawMarble();
+		draw2DPoints();
 		ctx2D.fillStyle = "#000";
 		ctx2D.fillRect(0, canvas2D.height-10, canvas2D.width*marbleDist, canvas2D.height);
 	}
